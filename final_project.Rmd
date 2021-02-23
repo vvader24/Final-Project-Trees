@@ -1,0 +1,141 @@
+---
+title: "final_project"
+author: "Anisha Babu"
+date: "2/21/2021"
+output: html_document
+editor_options: 
+  chunk_output_type: console
+---
+
+```{r setup, warning=FALSE, message=FALSE}
+# import packages
+library(rio)
+library(tidyverse)
+library(tigris)
+library(dplyr)
+library(leaflet)
+library(sp)
+library(ggmap) # need to cite!!
+library(maptools)
+library(broom)
+library(httr)
+library(rgdal)
+library(gganimate)
+library(gifski)
+library(png)
+
+d <- read_csv("https://data.cityofnewyork.us/api/views/uvpi-gqnh/rows.csv")
+
+# import data
+tree_census <- import("2015_Street_Tree_Census_-_Tree_Data.csv")
+r <- GET('http://data.beta.nyc//dataset/0ff93d2d-90ba-457c-9f7e-39e47bf2ac5f/resource/35dd04fb-81b3-479b-a074-a27a37888ce7/download/d085e2f8d0b54d4590b1e7d1f35594c1pediacitiesnycneighborhoods.geojson')
+nyc_neighborhoods <- readOGR(content(r,'text'), 'OGRGeoJSON', verbose = F)
+nyc_neighborhoods_df <- tidy(nyc_neighborhoods)
+
+```
+
+
+```{r NYC map, warning=FALSE, message=FALSE}
+# Count neighborhood trees
+trees_by_neighborhood <- tree_census %>%
+  group_by(neighborhood = nta_name) %>%
+  summarize(num_trees=n())
+
+# Join data
+tree_neighborhood <- tidy(nyc_neighborhoods, region="neighborhood") %>%
+  left_join(., trees_by_neighborhood, by=c("id"="neighborhood")) 
+
+# Tree density heat map
+ggplot() + 
+  geom_polygon(data=tree_neighborhood, 
+               aes(x=long, y=lat, group=group, fill=num_trees),
+               color="black") +
+  theme_void() +
+  labs(title = "Tree Density in NYC",
+       fill = "Number of Trees") 
+
+# NOTE: neighborhood names do not match perfectly, so some empty neighborhoods
+# CONSIDER: may change to a dot density map
+
+
+```
+
+```{r trunk diameter, warning=FALSE, message=FALSE}
+# change values to 0/1 numeric
+tree_census[tree_census == "No"] <- "0"  
+tree_census[tree_census == "Yes"] <- "1"
+tree_census$root_stone <- as.numeric(tree_census$root_stone)
+tree_census$root_grate <- as.numeric(tree_census$root_grate)
+tree_census$root_other <-as.numeric(tree_census$root_other)
+tree_census$trunk_wire <- as.numeric(tree_census$trunk_wire)
+tree_census$trnk_light <- as.numeric(tree_census$trnk_light)
+tree_census$trnk_other <- as.numeric(tree_census$trnk_other)
+tree_census$brch_shoe <- as.numeric(tree_census$brch_shoe)
+tree_census$brch_light <- as.numeric(tree_census$brch_light)
+tree_census$brch_other <- as.numeric(tree_census$brch_other)
+
+tree_damage <- tree_census %>%
+  filter(problems != "None") %>%
+  pivot_longer(cols = root_stone:brch_other, 
+               names_to = "problem_type", 
+               values_to = "count") %>%
+  group_by(problem_type) %>%
+  filter(count == 1) %>%
+  summarize(average_dbh = mean(tree_dbh))
+tree_damage$problem_type <- as.factor(tree_damage$problem_type) 
+tree_damage$problem_type <- recode(tree_damage$problem_type, 
+                                   brch_light="Lights in Branches",
+                                   brch_shoe = "Shoes in Branches",
+                                   brch_other = "Other Branch Problem",
+                                   trunk_wire = "Wire on Trunk",
+                                   trnk_light = "Lights on Trunk",
+                                   trnk_other = "Other Trunk Problems",
+                                   root_stone = "Paving Stones on Root",
+                                   root_grate = "Grate on Root",
+                                   root_other = "Other Root Problems")
+
+tree_damage %>%
+  ggplot(aes(x = problem_type, y = average_dbh)) +
+  geom_bar(stat = "identity", aes(fill = problem_type)) +
+  labs(title = "Tree Diameter by Problem Type",
+       x = "Problem Type",
+       y = "Average Tree Diameter") +
+  theme(legend.position = "none") +
+  theme(axis.text.x = element_text(angle = 60, hjust=1))
+
+
+```
+
+```{r species type, warning=FALSE, message=FALSE}
+tree_species <- tree_census %>%
+  group_by(nta_name) %>%
+  summarize(num_trees=n(), num_species = length(unique(spc_common))) %>%
+  pivot_longer(cols = num_trees:num_species, 
+               names_to = "type_count",
+               values_to = "count")
+
+species_plot <- tree_species %>%
+  filter(type_count == "num_species") %>%
+  ggplot(aes(x = count, y = type_count)) +
+  geom_bar(stat = "identity", fill = "skyblue3", color = "gray70") +
+  labs(x = "Tree Species Count") +
+  theme(axis.text.y=element_blank(),
+        axis.title.y=element_blank())
+species_plot <- species_plot +
+  transition_states(nta_name,
+                    transition_length = 2,
+                    state_length = 1) +
+  labs(title = 'Number of Tree Species in: {closest_state}')
+
+animate(species_plot,fps = 1)
+
+
+
+```
+
+
+
+
+
+
+
