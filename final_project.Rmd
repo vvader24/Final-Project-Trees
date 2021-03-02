@@ -60,13 +60,36 @@ ggplot() +
 # NOTE: neighborhood names do not match perfectly, so some empty neighborhoods
 # CONSIDER: may change to a dot density map
 
-
+#VV = This visualization 1 definitely works; suggestion - Is there a way to label what the grey areas indicate? The legend does not indicate what the grey stands for, perhaps using another color scheme - green to blue may be? 
 ```
 
 ```{r trunk diameter, warning=FALSE, message=FALSE}
 # change values to 0/1 numeric
+
+# This certainly works but tidyverse might be helpful to make this eeven more clear
+
+# tree_census %>% 
+#   mutate(tree_census, recode("No" = 0,
+#                              "Yes" = 1)) 
+
 tree_census[tree_census == "No"] <- "0"  
 tree_census[tree_census == "Yes"] <- "1"
+
+
+# V = Apart from using tidyverse
+# tree_census %>% 
+#   mutate(root_stone = numeric(root_stone),
+#          root_grate = numeric(root_grate)) #adding other variables
+
+# I might also consider building a function and deploying it
+# # make_numeric(variable){
+#     variable = as.numeric(variable)
+# }
+# Then use a map function or a for loop for all the variables
+# 1:10 %>%
+#df %>% # df consists of all the vatiables needed 
+# map(~ as.numeric(.x))
+  
 tree_census$root_stone <- as.numeric(tree_census$root_stone)
 tree_census$root_grate <- as.numeric(tree_census$root_grate)
 tree_census$root_other <-as.numeric(tree_census$root_other)
@@ -106,6 +129,8 @@ tree_damage %>%
   theme(legend.position = "none") +
   theme(axis.text.x = element_text(angle = 60, hjust=1))
 
+#VV = bar chart is a great choice! 
+# Suggestion - may be use a different color scheme, unless you intend to use colors that indicate a continuum; may be use coord_flip() - not sure about this
 
 ```
 
@@ -132,9 +157,49 @@ species_plot <- species_plot +
 
 animate(species_plot,fps = 1)
 
-
+#VV = My suggestion would be reducing the width of the bar; I am not sure but may be there is a way to modify the time for the switch between categories 
 
 ```
+
+# Peer Review - Vinita Vader
+
+## At least three areas of strength
+- Great use of left_join
+- The playing around with the theme() makes a significant difference in the graph for the better
+- Great use of gganimate package
+## At least one thing you learned from reviewing their script
+- gganimate is very easy to use and can be quite effective
+
+## at least one and no more than three areas for improvement for each visualization.
+
+### Viz 1 - This visualization 1 definitely works; suggestion - Is there a way to label what the grey areas indicate? The legend does not indicate what the grey stands for, perhaps using another color scheme - green to blue may be? 
+
+### Viz 2 - 
+Apart from using tidyverse
+ tree_census %>% 
+   mutate(root_stone = numeric(root_stone),
+          root_grate = numeric(root_grate)) #adding other variables
+
+ I might also consider building a function and deploying it
+  make_numeric(variable){
+     variable = as.numeric(variable)
+ }
+ Then use a map function or a for loop for all the variables
+ 1:10 %>%
+df %>% # df consists of all the vatiables needed 
+ map(~ as.numeric(.x))
+ 
+ 
+ bar chart is a great choice! 
+Suggestion - may be use a different color scheme, unless you intend to use colors that indicate a continuum; may be use coord_flip() - not sure about this
+
+ ### Viz 3 -  My suggestion would be reducing the width of the bar; I am not sure but may be there is a way to modify the time for the switch between categories 
+ 
+## Comments on both the code leading up to (and including) the visualization, and the visualization itself (aesthetics, best practices, etc.).
+ - I can see a possible story that can be told with these visualizations
+ - The coding is very clear although commenting on certain parts may be helpful
+ - I picked up a couple of new packages like gifski and maptools. 
+ 
 
 
 
